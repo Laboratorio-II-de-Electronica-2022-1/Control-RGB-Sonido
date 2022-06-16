@@ -1,0 +1,86 @@
+#include <Wire.h>
+#include <RTClib.h>
+
+RTC_DS3231 rtc;
+String Fecha="";
+String Hora="";
+
+void setup() {
+  Serial.begin(9600);
+
+  if(! rtc.begin()){
+      Serial.println("Modulo RTC no encontrado!");
+      while(1);
+  }
+  rtc.adjust(DateTime(2022,6,16,9,42,0));
+  //rtc.adjust(DateTime(__DATE__,__TIME__));
+}
+
+void loop() {
+  //Actualizar la fecha y horario cada segundo
+
+  arreglarFecha();
+  
+  Serial.print(Fecha);
+  Serial.print(" ");
+  Serial.print(Hora);
+  Serial.println();
+  delay(1000);
+  
+}
+
+void arreglarFecha(){
+  DateTime fecha=rtc.now();
+  int anio=fecha.year();
+  int dia=fecha.day();
+  int mes=fecha.month();
+  int hora=fecha.hour();
+  int minuto=fecha.minute();
+  int segundo=fecha.second();
+  
+  Fecha=comprobacion(dia)+"/"+comprobacion(mes)+"/"+anio;
+  Hora=comprobacion(hora)+":"+comprobacion(minuto)+":"+comprobacion(segundo);
+  
+}
+
+String comprobacion(int i){
+  String Var="";
+  if(i<10){
+      switch(i){
+          case 0:
+            Var="00";
+          break;
+          case 1:
+            Var="01";
+          break;
+          case 2:
+            Var="02";
+          break;
+          case 3:
+            Var="03";
+          break;
+          case 4:
+            Var="04";
+          break;
+          case 5:
+            Var="05";
+          break;
+          case 6:
+            Var="06";
+          break;
+          case 7:
+            Var="07";
+          break;
+          case 8:
+            Var="08";
+          break;
+          case 9:
+            Var="09";
+          break;
+        }
+    }
+  else{
+      Var=i;
+    }
+  return Var;
+}
