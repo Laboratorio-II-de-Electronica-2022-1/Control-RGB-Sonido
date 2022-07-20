@@ -1,0 +1,106 @@
+#include <SPI.h>
+#include <SD.h> 
+#include <Separador.h>
+
+#define SSpin 53
+
+Separador s;
+File archivo;
+
+String palabrota;
+String palabra1;
+String palabra2;
+String palabra3;
+String palabra4;
+String mensaje[6];
+String index;
+String nombreTXT[5];
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Inicializando tarjeta...");
+  if(!SD.begin(SSpin)){
+      Serial.println("Fallo en inicializacion!");
+      return;
+    }
+
+  Serial.println("Inicialización correcta");
+  archivo=SD.open("prueba1.txt", FILE_WRITE);
+
+  //Proceso de escritura
+  if(archivo){
+      archivo.println("juan,david,osorio,navia");
+      Serial.println("Escribiendo en archivo de prueba.txt...");
+      archivo.close();
+      Serial.println("Escritura correcta");
+    }
+  else{
+      Serial.println("Error en apertura de prueba.txt");
+    }
+
+  //Proceso de lectura
+  archivo=SD.open("prueba1.txt");
+  if(archivo){
+      Serial.println("Contenido del archivo:");
+      while(archivo.available()){
+          palabrota = palabrota + (char)archivo.read();
+      }archivo.close();
+    }else{
+      Serial.println("Error en la apertura de prueba.txt");
+  }
+
+  archivo=SD.open("index.txt");
+  if(archivo){
+    Serial.println("Contenido del archivo: ");
+    while(archivo.available()){
+      index=index+(char)archivo.read();  
+    }archivo.close();
+    Serial.println(index);
+  }
+
+  Serial.print("index");
+  Serial.println(index);
+  
+  for(int i=0;i<5;i++){
+    mensaje[(i+1)]="";
+    nombreTXT[i]=s.separa(index,',',i);
+    archivo=SD.open(nombreTXT[i]);
+    while(archivo.available()){
+      mensaje[(i+1)]=mensaje[(i+1)]+(char)archivo.read();
+    }archivo.close();
+    Serial.print("Mensaje ");
+    Serial.print((i+1));
+    Serial.print(" ");
+    Serial.println(mensaje[(i+1)]);
+  }
+
+
+  Serial.println(palabrota);
+
+  separadorPorComas(palabrota);
+
+  Serial.print("Palabra 1:");Serial.println(" " + palabra1);
+  Serial.print("Palabra 2:");Serial.println(" " + palabra2);
+  Serial.print("Palabra 3:");Serial.println(" " + palabra3);
+  Serial.print("Palabra 4:");Serial.println(" " + palabra4);
+
+  if(SD.remove("prueba1.txt")){
+    Serial.println("Borrado con exito");
+    }else{
+      Serial.println("Fallo al hacer la borracion");
+    }
+  
+}
+
+void separadorPorComas(String palabrota1){
+  palabra1 = palabrota1.substring(0,palabrota1.indexOf(','));int ant1 = palabrota1.indexOf(',')+1;
+  palabra2 = palabrota1.substring(ant1,palabrota1.indexOf(',',ant1));int ant2 = palabrota1.indexOf(',',ant1)+1;
+  palabra3 = palabrota1.substring(ant2,palabrota1.indexOf(',',ant2));int ant3 = palabrota1.indexOf(',',ant2)+1;
+  palabra4 = palabrota1.substring(ant3,palabrota1.indexOf(',',ant3));
+  
+  }
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+}
