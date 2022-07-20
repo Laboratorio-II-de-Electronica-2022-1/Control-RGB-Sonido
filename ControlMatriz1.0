@@ -1,0 +1,870 @@
+#include <Adafruit_NeoPixel.h>
+#include <Wire.h>
+#include <RTClib.h>
+#include <SPI.h>
+#include <SD.h> 
+#include <Separador.h>
+
+//Variables globales para el control de la matriz RGB
+  int NUMPIXELS=59;         //Numero de leds conectados por fila
+  int colmI = -NUMPIXELS;   //Controlar en que columna se imprime el texto en la matriz
+  char palabra[28]={"              "};    //vector de char equivalente al mensaje
+  String asdC;    //Detecta un cambio en la palabra a imprimir 
+  String asd;     //Palabra a imprimir en la matriz
+  int contE = 0;      //controla el espacio que ocupa cada caracter
+//  int a = (int)255*rand();      //Control del color Verde en la matriz
+//  int b = (int)255*rand();      //Control del color Rojo en la matriz
+//  int c = (int)255*rand();      //Control del color Azul en la matriz
+  int a = 255;      //Control del color verde en la matriz
+  int b = 255;    //Control del color Rojo en la matriz
+  int c = 255;      //Control del color Azul en la matriz
+  //Objetos que representan las filas de la matriz RGB
+  //Adafruit_NeoPixel f0 = Adafruit_NeoPixel(NUMPIXELS,2,NEO_RGB+NEO_KHZ800);
+  //Adafruit_NeoPixel f1 = Adafruit_NeoPixel(NUMPIXELS,3,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f2 = Adafruit_NeoPixel(NUMPIXELS,4,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f3 = Adafruit_NeoPixel(NUMPIXELS,5,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f4 = Adafruit_NeoPixel(NUMPIXELS,6,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f5 = Adafruit_NeoPixel(NUMPIXELS,7,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f6 = Adafruit_NeoPixel(NUMPIXELS,8,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f7 = Adafruit_NeoPixel(NUMPIXELS,9,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f8 = Adafruit_NeoPixel(NUMPIXELS,10,NEO_RGB+NEO_KHZ800);
+  Adafruit_NeoPixel f9 = Adafruit_NeoPixel(NUMPIXELS,11,NEO_RGB+NEO_KHZ800);
+  //Adafruit_NeoPixel f10 = Adafruit_NeoPixel(NUMPIXELS,12,NEO_RGB+NEO_KHZ800);
+  //Adafruit_NeoPixel f11 = Adafruit_NeoPixel(NUMPIXELS,13,NEO_RGB+NEO_KHZ800);
+//===========================================================================
+
+//Variables globales para el sensor de sonido
+  int SensorSonido=18;             //Pin al cual se conecta el sensor de sonido
+  int FLAG=0;                     //Bandera para distinguir los conteos de aplausos
+  volatile int Estado=0;          //Estado de los leds RGB - (0)Apagado - (1)Mensajes - (2)Reloj - (3)Actualizar datos
+  int flag_msg=0;                 //Controla cual de los mensajes guardados en SD es mostrado en el momento
+  volatile int ConteoAplausos=0;  //Conteo de aplausos para los comandos
+  unsigned long T1=0;      //Variable para controlar tiempo T1
+  unsigned long T2=0;      //Variable para controlar tiempo T2
+  unsigned long DT=0;      //Diferencia entre los tiempos T2-T1
+  String mensaje[6];              //Vector para guardar los mensajes leídos por la sd
+//===========================================================================
+
+//Variables globales para el RTC
+RTC_DS3231 rtc;     //Objeto dedicado al RTC
+String Hora="AA:AA:AA";
+int segundoC;
+int minutoC;
+int horaC;
+//===========================================================================
+
+//Variables globales para la lectura del SD
+#define SSpin 53
+Separador s;
+File DOC;
+String nombreTXT[5];
+String index;
+//===========================================================================
+
+
+//Matriz para guardar el mensaje a mostrar en los led
+boolean matriz[12][236];
+
+//Funcion encargada de convertir una cadena a una matriz entendible por los leds
+void conversion(String str){
+
+//Alfabeto de la matriz RGB
+//byte cero[8][6]={   {0,0,1,1,1,0},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,0,1,1,1,0}};
+//byte uno[8][6]={   {0,0,0,1,0,0},
+//                    {0,1,1,1,0,0},
+//                    {0,0,0,1,0,0},
+//                    {0,0,0,1,0,0},
+//                    {0,0,0,1,0,0},
+//                    {0,0,0,1,0,0},
+//                    {0,0,0,1,0,0},
+//                    {0,1,1,1,1,1}};
+//byte dos[8][6]={   {0,0,1,1,1,0},
+//                  {0,1,0,0,0,1},
+//                  {0,0,0,0,0,1},
+//                  {0,0,0,0,1,0},
+//                  {0,0,0,1,0,0},
+//                  {0,0,1,0,0,0},
+//                  {0,1,0,0,0,0},
+//                  {0,1,1,1,1,1}};
+//byte tres[8][6]={   {0,0,1,1,1,0},
+//                  {0,1,0,0,0,1},
+//                  {0,0,0,0,0,1},
+//                  {0,0,0,0,0,1},
+//                  {0,0,0,1,1,0},
+//                  {0,0,0,0,0,1},
+//                  {0,1,0,0,0,1},
+//                  {0,0,1,1,1,0}};
+//byte cuatro[8][6]={   {0,1,0,0,0,0},
+//                      {0,1,0,0,0,0},
+//                      {0,1,0,0,0,0},
+//                      {0,1,0,0,0,0},
+//                      {0,1,0,1,0,0},
+//                      {0,1,1,1,1,1},
+//                      {0,0,0,1,0,0},
+//                      {0,0,0,1,0,0}};
+//byte cinco[8][6]={   {0,1,1,1,1,1},
+//                      {0,1,0,0,0,0},
+//                      {0,1,0,0,0,0},
+//                      {0,1,0,0,0,0},
+//                      {0,1,1,1,1,0},
+//                      {0,0,0,0,0,1},
+//                      {0,0,0,0,0,1},
+//                      {0,1,1,1,1,0}};
+//byte seis[8][6]={   {0,0,1,1,1,0},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,0},
+//                    {0,1,0,0,0,0},
+//                    {0,1,1,1,1,0},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,0,1,1,1,0}};
+//byte siete[8][6]={   {0,1,1,1,1,1},
+//                      {0,0,0,0,0,1},
+//                      {0,0,0,0,1,0},
+//                      {0,0,0,1,0,0},
+//                      {0,0,0,1,0,0},
+//                      {0,0,0,1,0,0},
+//                      {0,0,0,1,0,0},
+//                      {0,0,0,1,0,0}};
+//byte ocho[8][6]={   {0,0,1,1,1,0},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,0,1,1,1,0},
+//                    {0,1,0,0,0,1},  
+//                    {0,1,0,0,0,1},
+//                    {0,0,1,1,1,0}};
+//byte nueve[8][6]={   {0,0,1,1,1,0},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,0,1,1,1,1},
+//                    {0,0,0,0,0,1},
+//                    {0,1,0,0,0,1},
+//                    {0,0,1,1,1,0}};
+byte dos_puntos[8][6]={   {0,0,0,0,0,0},
+                          {0,0,0,0,0,0},
+                          {0,0,0,0,0,0},
+                          {0,0,0,1,0,0},
+                          {0,0,0,0,0,0},
+                          {0,0,0,1,0,0},  
+                          {0,0,0,0,0,0},
+                          {0,0,0,0,0,0}};
+byte aa[8][6]={   {0,0,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1}};
+byte bb[8][6]={   {0,1,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,0}};
+byte cc[8][6]={   {0,0,1,1,1,1},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,0,1,1,1,1}};
+byte dd[8][6]={   {0,1,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,0}};
+byte ee[8][6]={   {0,0,1,1,1,1},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,1,1,1,1},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,0,1,1,1,1}};
+byte ff[8][6]={   {0,0,1,1,1,1},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,1,1,1,1},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0}};
+byte gg[8][6]={   {0,0,1,1,1,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,0,1,1,1,0}};
+byte hh[8][6]={   {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1}};
+byte ii[8][6]={   {0,1,1,1,1,1},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,1,1,1,1,1}};
+byte jj[8][6]={   {0,1,1,1,1,1},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,1,1,1,0,0}};
+byte kk[8][6]={   {0,1,0,0,0,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,1,0},
+                {0,1,1,1,0,0},
+                {0,1,0,0,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1}};
+byte ll[8][6]={   {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,1,1,1,1}};
+byte mm[8][6]={   {0,1,0,0,0,1},
+                {0,1,1,0,1,1},
+                {0,1,0,1,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1}};
+byte nn[8][6]={   {0,1,0,0,0,1},
+                {0,1,1,0,0,1},
+                {0,1,1,0,0,1},
+                {0,1,0,1,0,1},
+                {0,1,0,1,0,1},
+                {0,1,0,0,1,1},
+                {0,1,0,0,1,1},
+                {0,1,0,0,0,1}};
+byte oo[8][6]={   {0,0,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,0,1,1,1,0}};
+byte pp[8][6]={   {0,1,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0}};
+byte qq[8][6]={   {0,0,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,1,0,1},
+                {0,1,0,0,1,1},
+                {0,0,1,1,1,0}};
+byte rr[8][6]={   {0,1,1,1,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,1,1,1,0},
+                {0,1,0,0,1,0},
+                {0,1,0,0,1,0},
+                {0,1,0,0,0,1}};
+byte ss[8][6]={   {0,0,1,1,1,1},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,0,0,0,0},
+                {0,0,1,1,1,0},
+                {0,0,0,0,0,1},
+                {0,0,0,0,0,1},
+                {0,1,1,1,1,0}};
+byte tt[8][6]={   {0,1,1,1,1,1},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0}};
+byte uu[8][6]={   {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,0,1,1,1,0}};
+byte vv[8][6]={   {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,0,1,0,1,0},
+                {0,0,0,1,0,0}};
+byte ww[8][6]={   {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,1,0,1},
+                {0,1,1,0,1,1},
+                {0,1,0,0,0,1}};
+byte xx[8][6]={   {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,0,1,0,1,0},
+                {0,0,0,1,0,0},
+                {0,0,1,0,1,0},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1}};
+byte yy[8][6]={   {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,1,0,0,0,1},
+                {0,0,1,0,1,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0},
+                {0,0,0,1,0,0}};
+byte zz[8][6]={   {0,1,1,1,1,1},
+                {0,0,0,0,0,1},
+                {0,0,0,0,0,1},
+                {0,0,0,0,1,0},
+                {0,0,0,1,0,0},
+                {0,0,1,0,0,0},
+                {0,1,0,0,0,0},
+                {0,1,1,1,1,1}};
+byte esp[8][6]={ {0,0,0,0,0,0},
+                {0,0,0,0,0,0},
+                {0,0,0,0,0,0},
+                {0,0,0,0,0,0},
+                {0,0,0,0,0,0},
+                {0,0,0,0,0,0},
+                {0,0,0,0,0,0},
+                {0,0,0,0,0,0}};
+  
+  str.toCharArray(palabra, str.length()+1);   
+  for(int i=0; i<str.length(); i++){
+    switch ((int)palabra[i]) {
+      //Simbolos
+        case 32:
+          imprimir(esp, str.length());break;
+        case 58:
+          imprimir(dos_puntos, str.length());break;
+      //numeros
+//        case 48:
+//          imprimir(cero, str.length());break;
+//        case 49:
+//          imprimir(uno, str.length());break;
+//        case 50:
+//          imprimir(dos, str.length());break;
+//        case 51:
+//          imprimir(tres, str.length());break;
+//        case 52:
+//          imprimir(cuatro, str.length());break;
+//        case 53:
+//          imprimir(cinco, str.length());break;
+//        case 54:
+//          imprimir(seis, str.length());break;
+//        case 55:
+//          imprimir(siete, str.length());break;
+//        case 56:
+//          imprimir(ocho, str.length());break;
+//        case 57:
+//          imprimir(nueve, str.length());break;
+      //letras
+        case 65:
+        case 97:
+          imprimir(aa, str.length());break;
+        case 66:
+        case 98:
+          imprimir(bb, str.length());break;
+        case 67:
+        case 99:
+          imprimir(cc, str.length());break;
+        case 68:
+        case 100:
+          imprimir(dd, str.length());break;
+        case 69:
+        case 101:
+          imprimir(ee, str.length());break;
+        case 70:
+        case 102:
+          imprimir(ff, str.length());break;
+        case 71:
+        case 103:
+          imprimir(gg, str.length());break;
+        case 72:
+        case 104:
+          imprimir(hh, str.length());break;
+        case 73:
+        case 105:
+          imprimir(ii, str.length());break;
+        case 74:
+        case 106:
+          imprimir(jj, str.length());break;
+        case 75:
+        case 107:
+          imprimir(kk, str.length());break;
+        case 76:
+        case 108:
+          imprimir(ll, str.length());break;
+        case 77:
+        case 109:
+          imprimir(mm, str.length());break;
+        case 78:
+        case 110:
+          imprimir(nn, str.length());break;
+        case 79:
+        case 111:
+          imprimir(oo, str.length());break;
+        case 80:
+        case 112:
+          imprimir(pp, str.length());break;
+        case 81:
+        case 113:
+          imprimir(qq, str.length());break;
+        case 82:
+        case 114:
+          imprimir(rr, str.length());break;
+        case 83:
+        case 115:
+          imprimir(ss, str.length());break;
+        case 84:
+        case 116:
+          imprimir(tt, str.length());break;
+        case 85:
+        case 117:
+          imprimir(uu, str.length());break;
+        case 86:
+        case 118:
+          imprimir(vv, str.length());break;
+        case 87:
+        case 119:
+          imprimir(ww, str.length());break;
+        case 88:
+        case 120:
+          imprimir(xx, str.length());break;
+        case 89:
+        case 121:
+          imprimir(yy, str.length());break;  
+        case 90:
+        case 122:
+          imprimir(zz, str.length());break;
+     }
+  }
+}
+//===========================================================================
+
+//Funcion encargada establecer en una posicion de la matriz un caracter
+void imprimir(byte m[8][6], int digitos){
+  if(contE<digitos *6){
+    for(int j=0; j<6 ; j++){
+      for(int i=0; i<8 ; i++){
+        if(m[i][j]==1) matriz[i+2][j+contE]=true;
+        else matriz[i+2][j+contE]=false;
+      }
+    }
+    contE=contE+6;
+  }
+}
+//===========================================================================
+
+//Se encarga de recibir la matriz e imprimirla en los leds RGB
+void manejoLed(int lar){
+  //Serial.println("Comenzando a imprimir el mensaje ");
+  int largo = lar+1;
+  if(lar>9){
+      for(int j=0; j<NUMPIXELS; j++){
+        int limpiacion = 1;
+        if((colmI+j)%limpiacion==0){limpiarled(j, limpiacion);}  
+        if((colmI+j-largo*6)%limpiacion==0){limpiarled(j, limpiacion);}
+        if(j==0){limpiarled(j, limpiacion);}
+        if(colmI+j>=0 and colmI<lar*6){
+          //if(matriz[0][colmI+j]){f0.setPixelColor(j,f0.Color(a,b,c));f0.show();}
+          //if(matriz[1][colmI+j]){f1.setPixelColor(j,f1.Color(a,b,c));f1.show();}
+          if(matriz[2][colmI+j]){f2.setPixelColor(j,f2.Color(a,b,c));f2.show();}
+          if(matriz[3][colmI+j]){f3.setPixelColor(j,f3.Color(a,b,c));f3.show();}
+          if(matriz[4][colmI+j]){f4.setPixelColor(j,f4.Color(a,b,c));f4.show();}
+          if(matriz[5][colmI+j]){f5.setPixelColor(j,f5.Color(a,b,c));f5.show();}
+          if(matriz[6][colmI+j]){f6.setPixelColor(j,f6.Color(a,b,c));f6.show();}
+          if(matriz[7][colmI+j]){f7.setPixelColor(j,f7.Color(a,b,c));f7.show();}
+          if(matriz[8][colmI+j]){f8.setPixelColor(j,f8.Color(a,b,c));f8.show();}
+          if(matriz[9][colmI+j]){f9.setPixelColor(j,f9.Color(a,b,c));f9.show();}
+          //if(matriz[10][colmI+j]){f10.setPixelColor(j,f10.Color(a,b,c));f10.show();}
+          //if(matriz[11][colmI+j]){f11.setPixelColor(j,f11.Color(a,b,c));f10.show();}
+        }
+        if(colmI+j-largo*6>=0){
+          //if(matriz[0][colmI+j-largo*6]){f0.setPixelColor(j,f0.Color(a,b,c));f0.show();}
+          //if(matriz[1][colmI+j-largo*6]){f1.setPixelColor(j,f1.Color(a,b,c));f1.show();}
+          if(matriz[2][colmI+j-largo*6]){f2.setPixelColor(j,f2.Color(a,b,c));f2.show();}
+          if(matriz[3][colmI+j-largo*6]){f3.setPixelColor(j,f3.Color(a,b,c));f3.show();}
+          if(matriz[4][colmI+j-largo*6]){f4.setPixelColor(j,f4.Color(a,b,c));f4.show();}
+          if(matriz[5][colmI+j-largo*6]){f5.setPixelColor(j,f5.Color(a,b,c));f5.show();}
+          if(matriz[6][colmI+j-largo*6]){f6.setPixelColor(j,f6.Color(a,b,c));f6.show();}
+          if(matriz[7][colmI+j-largo*6]){f7.setPixelColor(j,f7.Color(a,b,c));f7.show();}
+          if(matriz[8][colmI+j-largo*6]){f8.setPixelColor(j,f8.Color(a,b,c));f8.show();}
+          if(matriz[9][colmI+j-largo*6]){f9.setPixelColor(j,f9.Color(a,b,c));f9.show();}
+          //if(matriz[10][colmI+j-largo*6]){f10.setPixelColor(j,f10.Color(a,b,c));f10.show();}
+          //if(matriz[11][colmI+j-largo*6]){f11.setPixelColor(j,f11.Color(a,b,c));f10.show();}
+        }  
+      }colmI++;
+      if(colmI>largo*6){
+        colmI=1; 
+      }
+  }
+  else{
+      for(int j=0; j<NUMPIXELS; j++){
+          int MITAD = (int)(NUMPIXELS/2)+1;
+          //if(matriz[0][j]==1){f0.setPixelColor(j+MITAD-lar*3,f0.Color(a,b,c));f0.show();}
+          //if(matriz[1][j]==1){f1.setPixelColor(j+MITAD-lar*3,f1.Color(a,b,c));f1.show();}
+          if(matriz[2][j]==1){f2.setPixelColor(j+MITAD-lar*3,f2.Color(a,b,c));f2.show();}
+          if(matriz[3][j]==1){f3.setPixelColor(j+MITAD-lar*3,f3.Color(a,b,c));f3.show();}
+          if(matriz[4][j]==1){f4.setPixelColor(j+MITAD-lar*3,f4.Color(a,b,c));f4.show();}
+          if(matriz[5][j]==1){f5.setPixelColor(j+MITAD-lar*3,f5.Color(a,b,c));f5.show();}
+          if(matriz[6][j]==1){f6.setPixelColor(j+MITAD-lar*3,f6.Color(a,b,c));f6.show();}
+          if(matriz[7][j]==1){f7.setPixelColor(j+MITAD-lar*3,f7.Color(a,b,c));f7.show();}
+          if(matriz[8][j]==1){f8.setPixelColor(j+MITAD-lar*3,f8.Color(a,b,c));f8.show();}
+          if(matriz[9][j]==1){f9.setPixelColor(j+MITAD-lar*3,f9.Color(a,b,c));f9.show();}
+          //if(matriz[10][j]==1){f10.setPixelColor(j+MITAD-lar*3,f10.Color(a,b,c));f10.show();}
+          //if(matriz[11][j]==1){f11.setPixelColor(j+MITAD-lar*3,f11.Color(a,b,c));f10.show();}
+      }
+  }
+  //Serial.println("Terminando de escribir el mensjae");
+}
+//===========================================================================
+
+//Funcion para limpiar la matriz led
+void limpiarled(int ini, int fin){
+  //f0.fill(f0.Color(0,0,0),ini,fin);
+  //f1.fill(f1.Color(0,0,0),ini,fin);
+  f2.fill(f2.Color(0,0,0),ini,fin);
+  f3.fill(f3.Color(0,0,0),ini,fin);
+  f4.fill(f4.Color(0,0,0),ini,fin);
+  f5.fill(f5.Color(0,0,0),ini,fin);
+  f6.fill(f6.Color(0,0,0),ini,fin);
+  f7.fill(f7.Color(0,0,0),ini,fin);
+  f8.fill(f8.Color(0,0,0),ini,fin);
+  f9.fill(f9.Color(0,0,0),ini,fin);
+  //f10.fill(f10.Color(0,0,0),ini,fin);
+  //f11.fill(f11.Color(0,0,0),ini,fin);
+}
+//===========================================================================
+
+//Funcion para pasarle un mensaje a la matriz RGB
+void pasarMensaje(){
+  asd=mensaje[flag_msg];
+  conversion(asd);
+  manejoLed(asd.length());
+}
+//===========================================================================
+
+//Funcion para imprimir la hora en la matriz RGb
+void imprimirHora(){
+  //arreglarFecha();
+  asd=Hora;
+  conversion(asd);
+  manejoLed(asd.length());
+}
+//===========================================================================
+
+//Activar la interrupcion del sensor de sonido
+void IntMIC(){
+  if(FLAG==0){
+    T2=millis();
+    FLAG=2;
+      
+  }
+  if(ConteoAplausos<4){
+    ConteoAplausos++;
+  }
+  Serial.println("Aplausos registrados: ");
+  Serial.println(ConteoAplausos);
+}
+//===========================================================================
+
+//El sistema espera cierto tiempo para esperar el comando completo del sensor
+void EsperaCambio(){
+  if(FLAG==1){
+    T2=millis();
+    FLAG=2;
+  }
+  if(FLAG==2){
+    T1=millis();
+    DT=(T1-T2);
+  }
+  if( (DT>=2000)||(ConteoAplausos==4) ){
+    FLAG=0;
+    contE=0;
+  }
+}
+//===========================================================================
+
+//Cambiar cual de los mensajes está siendo impreso en el momento
+void CambioEstado(){
+  flag_msg=flag_msg+1;
+  if (flag_msg==6){
+      flag_msg=1;
+    }
+}
+//===========================================================================
+
+//Funcion para limpiar la matriz que guarda el mensaje mostrado en los leds
+void limpiarMatriz(){
+  limpiarled(0,59);
+  for(int j=0 ; j<12 ; j++){
+    for(int i=0 ; i<236 ; i++){
+      matriz[j][i]=false;  
+    }  
+  }
+}
+//===========================================================================
+
+//Comprobamos el comando dado por el sensor de sonido
+void comprobarInterrupcion(){
+    if((FLAG==1)||(FLAG==2)){
+    EsperaCambio();
+    if(FLAG==0){
+      if(ConteoAplausos==1){
+        Estado=1;
+        limpiarMatriz();
+        CambioEstado();
+        ConteoAplausos=0;
+        Serial.print("Cambiado los mensajes (Estado 1): ");
+        Serial.println(mensaje[flag_msg]);
+      }
+      else if(ConteoAplausos==2){
+        Estado=2; 
+        limpiarMatriz();
+        ConteoAplausos=0;
+        Serial.println("Cambiando al modo de RTC (Estado 2)");
+      }
+      else if(ConteoAplausos==3){
+        int a = (int)255*rand();      //Control del color Rojo en la matriz
+        int b = (int)255*rand();      //Control del color Verde en la matriz
+        int c = (int)255*rand();      //Control del color Azul en la matriz  
+        ConteoAplausos=0;
+        Serial.println("Cambiando el color del RGB");
+      }
+      else if(ConteoAplausos==4){
+        Estado=3;
+        limpiarMatriz();
+        ConteoAplausos=0;
+        Serial.println("Actualizando la informacion de la matriz RGB y apagando");
+      }
+    }
+  }
+}
+//===========================================================================
+
+//Funcion para definir el formato de la hora
+void arreglarFecha(){
+  DateTime fecha=rtc.now();
+  int hora=fecha.hour();
+  int minuto=fecha.minute();
+  int segundo=fecha.second();
+
+  if(segundo != segundoC){limpiarled(43,59);contE=0;}
+  if(minuto != minutoC){limpiarled(25,59);contE=0;}
+  if(hora != horaC){limpiarled(0,59);contE=0;}
+
+  minutoC=minuto;
+  segundoC=segundo;
+  horaC=hora;
+  
+  Hora=comprobacion(hora)+":"+comprobacion(minuto)+":"+comprobacion(segundo);
+  
+}
+//===========================================================================
+
+//Funcion para comprobar el formato de la hora
+String comprobacion(int i){
+  String Var="";
+  if(i<10){
+      switch(i){
+          case 0:
+            Var="00";
+          break;
+          case 1:
+            Var="01";
+          break;
+          case 2:
+            Var="02";
+          break;
+          case 3:
+            Var="03";
+          break;
+          case 4:
+            Var="04";
+          break;
+          case 5:
+            Var="05";
+          break;
+          case 6:
+            Var="06";
+          break;
+          case 7:
+            Var="07";
+          break;
+          case 8:
+            Var="08";
+          break;
+          case 9:
+            Var="09";
+          break;
+        }
+    }
+  else{
+      Var=i;
+    }
+  return Var;
+}
+//===========================================================================
+
+//Funcion para mostrar el mensaje de carga
+void imprimirCarga(){
+  contE=0;
+  asd="Loading";
+  conversion(asd);
+  manejoLed(asd.length());  
+}
+//===========================================================================
+
+//Funcion para mostrar apagada la matriz RGB{
+void imprimirVacio(){
+  contE=0;
+  limpiarMatriz();
+  asd=" ";
+  conversion(asd);
+  manejoLed(asd.length());
+}
+//===========================================================================
+
+//Funcion para actualizar los mensajes desde la SD
+void actualizarSD(){
+  DOC=SD.open("index.txt");
+  if(DOC){
+    while(DOC.available()){
+      index=index+(char)DOC.read(); 
+    }DOC.close();
+  }
+  
+  for(int i=0;i<5;i++){
+    mensaje[(i+1)]="";
+    nombreTXT[i]=s.separa(index,',',i);
+    DOC=SD.open(nombreTXT[i]);
+    while(DOC.available()){
+      mensaje[(i+1)]=mensaje[(i+1)]+(char)DOC.read();
+    }DOC.close();
+  }
+}
+//===========================================================================
+
+void setup() {
+
+  Serial.begin(9600);
+
+  //Seleccionar la frecuencia de PWM para los pines dedicados a las tiras LED
+  TCCR0B = TCCR0B & B11111000 | B00000010;    // set timer 0 divisor to     8 for PWM frequency of  7812.50 Hz
+  TCCR1B = TCCR1B & B11111000 | B00000010;    // set timer 1 divisor to     8 for PWM frequency of  3921.16 Hz
+  TCCR2B = TCCR2B & B11111000 | B00000010;    // set timer 2 divisor to     8 for PWM frequency of  3921.16 Hz
+  TCCR3B = TCCR3B & B11111000 | B00000010;    // set timer 3 divisor to     8 for PWM frequency of  3921.16 Hz
+  TCCR4B = TCCR4B & B11111000 | B00000010;    // set timer 4 divisor to     8 for PWM frequency of  3921.16 Hz
+
+  //Inicializar y configurar las tiras RGB
+  //f0.begin();f1.begin();
+  f2.begin();f3.begin();f4.begin();f5.begin();f6.begin();f7.begin();f8.begin();f9.begin();
+  //f10.begin();f11.begin();
+  //f0.show();f1.show();
+  f2.show();f3.show();f4.show();f5.show();f6.show();f7.show();f8.show();f9.show();
+  //f10.show();f11.show();
+
+  //Definir al sensor de sonido como entrada de interrupción
+  pinMode(SensorSonido, INPUT);
+  attachInterrupt(digitalPinToInterrupt(SensorSonido), IntMIC, RISING);   //Configurar el pin del sensor como Interrupción
+
+  //Iniciamos el RTC
+  if(! rtc.begin()){
+      while(1);
+      
+  }
+  //rtc.adjust(DateTime(2022,6,16,9,42,0));
+  rtc.adjust(DateTime(__DATE__,__TIME__));
+
+  //Inicializamos la SD
+  if(!SD.begin(SSpin)){
+    return;
+  }
+
+  actualizarSD();
+  
+}
+
+void loop() {
+  
+  //*
+  //Serial.println(mensaje[flag_msg]);
+  //Estado=1; 
+  //*
+  Serial.println(Estado);
+  comprobarInterrupcion();
+  
+  switch(Estado){
+    case 0:
+      Serial.println("Matriz apagada");
+      imprimirVacio();
+    break;
+
+    case 1:
+      Serial.println(mensaje[flag_msg]);
+      pasarMensaje();
+    break;
+
+    case 2:
+      Serial.println("Imprimir la hora con RTC");
+      imprimirHora();
+      delay(1000);
+    break;
+
+    case 3:
+      Serial.println("Modo de actualización del sistema");
+      imprimirCarga();
+      actualizarSD();
+      delay(3000);
+      //Serial.println("Mensajes actualizados, apagando sistema");
+      Estado=0;
+    break;
+  }
+
+}
